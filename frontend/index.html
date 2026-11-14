@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ClaimNet · 车险团伙欺诈挖掘平台</title>
+<link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<div id="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="logo">CN</div>
+      <div>
+        <div class="brand-title">ClaimNet</div>
+        <div class="brand-sub">车险团伙欺诈挖掘</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <button data-view="dashboard" class="nav-item active"><span>◫</span>总览</button>
+      <button data-view="import" class="nav-item"><span>⇪</span>案件导入</button>
+      <button data-view="network" class="nav-item"><span>◉</span>关系网络</button>
+      <button data-view="gangs" class="nav-item"><span>⚑</span>团伙列表</button>
+      <button data-view="patterns" class="nav-item"><span>⚙</span>模式识别</button>
+      <button data-view="changes" class="nav-item"><span>⇄</span>变化对比</button>
+      <button data-view="workbench" class="nav-item"><span>✦</span>调查工作台</button>
+      <button data-view="evaluation" class="nav-item"><span>◎</span>评估</button>
+      <button data-view="settings" class="nav-item"><span>⚒</span>权重与评分</button>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="mini-stat"><span id="sb-claims">–</span><label>理赔</label></div>
+      <div class="mini-stat"><span id="sb-persons">–</span><label>人员</label></div>
+      <div class="mini-stat"><span id="sb-gangs">–</span><label>团伙</label></div>
+      <div class="model-tag">模型 v<span id="sb-model">–</span></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <h1 id="page-title">总览</h1>
+      <div class="topbar-actions">
+        <span class="pill" id="data-version">数据版本 –</span>
+        <button class="btn ghost" id="btn-refresh">刷新</button>
+        <button class="btn primary" id="btn-analyse">重新分析</button>
+      </div>
+    </header>
+
+    <section class="view" id="view-dashboard">
+      <div class="kpi-row" id="kpis"></div>
+      <div class="grid-2">
+        <div class="card"><div class="card-head"><h2>风险最高的团伙</h2><span class="hint">按评分排序</span></div>
+          <div id="dash-gangs" class="gang-mini-list"></div></div>
+        <div class="card"><div class="card-head"><h2>最新提示</h2><span class="hint">图更新后的变化</span></div>
+          <div id="dash-alerts" class="alert-list"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>评分权重构成</h2><span class="hint">反馈校准后自动调整</span></div>
+        <div id="weight-bars" class="weight-bars"></div>
+      </div>
+    </section>
+
+    <section class="view hidden" id="view-import">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head"><h2>导入案件数据</h2><span class="hint">JSON 文档批次</span></div>
+          <div class="import-drop" id="drop-zone">
+            <input type="file" id="file-input" accept=".json" multiple hidden>
+            <p>拖入 <b>policies.json / claims.json / surveys.json / shops.json</b></p>
+            <p class="hint">或点击选择文件；文件按名称自动归位</p>
+            <button class="btn" id="pick-files">选择文件</button>
+          </div>
+          <div class="import-status" id="import-status"></div>
+          <div class="divider">或使用已生成的数据集</div>
+          <button class="btn primary block" id="btn-load-raw">加载内置数据集</button>
+          <button class="btn ghost block" id="btn-reset">清空数据库</button>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>导入记录</h2></div>
+          <table class="table" id="imports-table"><thead><tr><th>批次</th><th>时间</th><th>保单</th><th>理赔</th><th>查勘</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <section class="view hidden" id="view-network">
+      <div class="net-toolbar">
+        <div class="field"><label>起点节点</label><input id="ego-node" placeholder="person:身份证号 / 姓名 / 车牌 / 电话"></div>
+        <div class="field small"><label>展开度数</label>
+          <select id="ego-depth"><option>1</option><option selected>2</option><option>3</option></select></div>
+        <div class="field small"><label>节点类型</label>
+          <div class="chips" id="type-chips">
+            <button data-type="person" class="chip on">人员</button>
+            <button data-type="vehicle" class="chip on">车辆</button>
+            <button data-type="phone" class="chip on">电话</button>
+            <button data-type="bank_card" class="chip on">银行卡</button>
+            <button data-type="address" class="chip on">地址</button>
+            <button data-type="repair_shop" class="chip on">修理厂</button>
+            <button data-type="claim" class="chip">赔案</button>
+            <button data-type="survey" class="chip">查勘</button>
+          </div>
+        </div>
+        <button class="btn primary" id="btn-ego">展开关联</button>
+        <button class="btn ghost" id="btn-full-graph">全量视图</button>
+      </div>
+      <div class="net-wrap">
+        <div id="cy"></div>
+        <div class="net-legend">
+          <div><i style="background:#dc2626"></i>人员</div>
+          <div><i style="background:#2563eb"></i>车辆</div>
+          <div><i style="background:#7c3aed"></i>电话</div>
+          <div><i style="background:#0891b2"></i>银行卡</div>
+          <div><i style="background:#ca8a04"></i>地址</div>
+          <div><i style="background:#059669"></i>修理厂</div>
+          <div class="legend-sep"></div>
+          <div><i class="line strong"></i>强关联</div>
+          <div><i class="line weak"></i>弱关联</div>
+        </div>
+        <div class="net-status" id="net-status">输入节点后展开</div>
+        <div class="net-detail hidden" id="net-detail"></div>
+      </div>
+    </section>
+
+    <section class="view hidden" id="view-gangs">
+      <div class="filters">
+        <div class="field"><label>最低评分</label><input type="range" id="gang-min-score" min="0" max="100" value="0"><span id="gang-min-score-val">0</span></div>
+        <div class="field small"><label>状态</label><select id="gang-status"><option value="">全部</option><option value="open">待调查</option><option value="confirmed">已确认</option><option value="excluded">已排除</option></select></div>
+        <div class="field small"><label>范围</label><select id="gang-analysis"><option value="">最新批次</option></select></div>
+      </div>
+      <div id="gang-grid" class="gang-grid"></div>
+    </section>
+
+    <section class="view hidden" id="view-patterns">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head"><h2>修理厂集中出险</h2><span class="hint">60 天窗口 · 重复客户</span></div>
+          <div id="pattern-shops" class="pattern-list"></div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>三者车互碰闭环</h2><span class="hint">A 撞 B 且 B 撞 A</span></div>
+          <div id="pattern-rings" class="pattern-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view hidden" id="view-changes">
+      <div class="compare-bar">
+        <div class="field small"><label>旧批次</label><select id="cmp-old"></select></div>
+        <div class="arrow">→</div>
+        <div class="field small"><label>新批次</label><select id="cmp-new"></select></div>
+        <button class="btn primary" id="btn-compare">对比</button>
+      </div>
+      <div id="compare-summary" class="kpi-row"></div>
+      <div id="compare-body"></div>
+    </section>
+
+    <section class="view hidden" id="view-workbench">
+      <div class="workbench">
+        <div class="case-list" id="case-list"></div>
+        <div class="case-main" id="case-main">
+          <div class="empty">从左侧选择案件开始调查</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view hidden" id="view-evaluation">
+      <div class="card">
+        <div class="card-head"><h2>团伙级评估</h2><span class="hint">对照独立保存的真实团伙名单</span></div>
+        <div id="eval-summary" class="kpi-row"></div>
+        <div class="grid-2">
+          <div><h3 class="sub">每个真实团伙的检出情况</h3><div id="eval-truth" class="eval-table"></div></div>
+          <div><h3 class="sub">误报团伙</h3><div id="eval-fp" class="eval-table"></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view hidden" id="view-settings">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-head"><h2>弱关联权重与时间窗</h2></div>
+          <div id="affinity-editor" class="weight-editor"></div>
+          <button class="btn primary" id="btn-save-affinity">保存并重算</button>
+        </div>
+        <div class="card">
+          <div class="card-head"><h2>评分特征权重</h2></div>
+          <div id="feature-editor" class="weight-editor"></div>
+          <div class="field"><label>团伙报告阈值</label><input type="number" id="threshold-input" min="0" max="100" step="1"></div>
+          <button class="btn primary" id="btn-save-features">保存</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h2>模型校准历史</h2><span class="hint">调查员反馈驱动</span></div>
+        <div id="model-history" class="history-list"></div>
+      </div>
+    </section>
+  </main>
+</div>
+<div id="toast" class="toast"></div>
+<script src="/static/vendor/cytoscape.min.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

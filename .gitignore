@@ -16,3 +16,11 @@ node_modules/
 __pycache__/
 .venv/
 venv/
+
+# ClaimNet runtime artefacts
+runtime/
+reports/
+data/raw/*.csv
+data/raw/*.json
+data/ground_truth.json
+.pytest_cache/
